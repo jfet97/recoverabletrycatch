@@ -108,7 +108,7 @@ function errorHandler({ error, isRecoverable }, recover) {
 ## the API
 ### error types
 First thing you have to know is the difference between recoverable errors and not-recoverable errors.\
-The former rises from a __yielded computation__ (the one inside a yielded arrow function) and let you call the `recover` function from the _catcher functon_ (the one you pass to the _catch_ method) with a value that will be used instead of the failed computation.
+The former rises from a __yielded computation__ (the one inside a yielded arrow function) and let you call the `recover` function from the _catcher functon_ (the one you pass to the _catch_ method) with a value that will be used instead of the failed computation.\
 The latter rises from the generator itself, most of the time because you forgot to yield a problematic computation wrapped inside an arrow function. There is no JavaScript magic which can help us; the only thing you can do from the catcher functon is to call the `restart` function that reboots the generator starting a fresh, new instance of it.
 
 Each time the _catcher functon_ will be called, you'll find inside the first object argument the error that interrupted the main execution and a boolean flag that indicates if the error is recoverable or not. So you'll have all the needed informations to to choose how to handle the situation.

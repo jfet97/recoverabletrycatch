@@ -1,6 +1,6 @@
 {
 	"name": "recoverabletrycatch",
-	"version": "1.0.3",
+	"version": "1.1.0",
 	"description": "This is a little package that brings into play a simple API similar to the `try-catch-finally` syntax to retrieve the main computation after any error was handled.",
 	"main": "dist/index.js",
 	"scripts": {

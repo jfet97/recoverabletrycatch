@@ -40,7 +40,7 @@ perform.prototype.catch = _catch;
 function _catch(catcher) {
 
 	if (!isFunction(catcher)) {
-		throw TypeError(`${task} is not a generator function`)
+		throw TypeError(`${catcher} is not a function`)
 	}
 
 	// store the catcher fn privately
@@ -56,7 +56,7 @@ function _catch(catcher) {
 		finally: finalizer => {
 
 			if (!isFunction(finalizer)) {
-				throw TypeError(`${finalizer} is not a generator function`)
+				throw TypeError(`${finalizer} is not a function`)
 			}
 
 			// store the finalizer fn privately

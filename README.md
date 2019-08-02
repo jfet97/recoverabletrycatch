@@ -1,6 +1,6 @@
 # recoverabletrycatch
 
-This is a little package that brings into play a simple API similar to the `try-catch-finally` syntax to retrieve the main computation after any error was handled.
+This is a little package (compiled into UMD) that brings into play a simple API similar to the `try-catch-finally` syntax to retrieve the main computation after any error was handled.
 
 ## install
 ```sh
@@ -141,6 +141,8 @@ The method `try` let you start the main computation.
 
 ## simple example
 ```js
+const { perform } = require("recoverabletrycatch");
+
 function getValue() {
     return Math.floor(Math.random() * 10);
 }

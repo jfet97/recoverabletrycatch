@@ -4,7 +4,7 @@
 	"description": "This is a little package that brings into play a simple API similar to the `try-catch-finally` syntax to retrieve the main computation after any error was handled.",
 	"main": "dist/index.js",
 	"scripts": {
-		"test": "npm run jest",
+		"test": "jest",
 		"build": "rollup -c",
 		"watch": "rollup -cw"
 	},
@@ -28,5 +28,15 @@
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/jfet97/recoverabletrycatch.git"
+	},
+	"jest": {
+		"transform": {
+			"^.+\\.js$": "babel-jest"
+		}
+	},
+	"dependencies": {
+		"@babel/core": "^7.5.5",
+		"@babel/preset-env": "^7.5.5",
+		"babel-jest": "^24.8.0"
 	}
 }

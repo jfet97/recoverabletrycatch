@@ -183,6 +183,3 @@ console.log({
 
 ## async perform
 Work in progress
-// nn sono obbligatorie da chiamnare le due funzioni, possiamo lasciar perdere e ci pensera finally se inseritsa o ciaone
-
-

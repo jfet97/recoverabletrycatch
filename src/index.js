@@ -1,4 +1,4 @@
-const { isFunction, isGenerator } = require("./utilities.js");
+import { isFunction, isGenerator } from "./utilities.js";
 
 const TASK = Symbol("task");
 const CATCHER = Symbol("catcher");
@@ -175,8 +175,7 @@ function run() {
 
 }
 
-// hi module.exports :D
 // hoping you're doing well
-module.exports.perform = perform;
+export { perform };
 
 

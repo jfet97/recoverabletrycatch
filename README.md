@@ -157,19 +157,19 @@ let res;
 
 perform(function*() {
         let v1 = getValue();
-				let v2 = getValue();
+	let v2 = getValue();
 				
-				// yield the problematic computation
+	// yield the problematic computation
         let v3 = yield () => mayThrow();
 				
-				console.log({ v1, v2, v3 });
+	console.log({ v1, v2, v3 });
 				
         res = v1 + v2 + v3;
     })
     .catch(function({ error, isRecoverable }, recover) {
         if (isRecoverable && error.message === "<0.5 error") {
-						// if mayThrow has thrown an error, I'll replace its failed computation 
-						// with the value 10
+	    // if mayThrow has thrown an error, I'll replace its failed computation 
+            // with the value 10
             recover(10);
         }
     })

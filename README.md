@@ -46,7 +46,7 @@ function * computation() {
 }
 ```
 
-2. Put each computation that may throw inside an own arrow function
+2. Put each computation that may throw inside its own arrow function
 ```js
 // STEP 2
 

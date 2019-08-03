@@ -88,17 +88,30 @@ function run() {
 	// it will store value contained into the IteratorResult or the value inserted with 'recoverFn'
 	let value;
 
-	// some bool-ish flags to make my life easier
-	let recover = false;
-	let restart = false;
+	// some bool-ish flags to make my life easier and a counter
+	const flowFlags = {
+		retry: false,
+		recover: false,
+		restart: false
+	}
+	const retryNTimes = { value: 0 };
 
 	// nop
 	const nop = () => { };
 	// this function could be be called when an error has occurred inside a yielded computation
+	// to retry N times the computation
+	const retryFn = (n = 1) => {
+		if (!(typeof n === "number") || Number.isNaN(n)) {
+			throw new TypeError(`${n} is not a valid argument for the retry function`)
+		}
+		retryNTimes.value = n;
+		flowFlags.retry = true;
+	}
+	// this function could be be called when an error has occurred inside a yielded computation
 	// to recover the main task (the generator)
-	const recoverFn = v => (value = v, recover = true);
+	const recoverFn = v => (value = v, flowFlags.recover = true);
 	// this function could be called after any error to restart the main task (the generator)
-	const restartFn = () => (restart = true);
+	const restartFn = () => (flowFlags.restart = true);
 
 	// the rare do-while loop
 	do {
@@ -114,11 +127,10 @@ function run() {
 			// So the current instance of the generator is no more usable, we can only restart it
 			this[CATCHER](
 				{ error, isRecoverable: false },
-				nop,
-				restartFn
+				{ retry: nop, recover: nop, restart: restartFn }
 			);
 
-			if (restart) {
+			if (flowFlags.restart) {
 				return run.call(this); // loving TCO
 			}
 
@@ -139,29 +151,37 @@ function run() {
 			// the generators during the next iteration
 			value = expr();
 		} catch (error) {
+
 			// what about errors inside yielded computations?
 			// them will be recoverable, because thanks to the 'yield' keyword we can insert
-			// a rescue value inside the generator in their place
-			this[CATCHER](
-				{ error, isRecoverable: true },
-				recoverFn,
-				restartFn
-			);
+			// a rescue value inside the generator in their place and by deferring the computation inside an arrow function
+			// we are able to retry it
+
+			const _value = handleRecoverableError.call(this, { flowFlags, retryNTimes }, { expr, error, retryFn, recoverFn, restartFn });
 
 			// if we want we can restart the whole generator
-			if (restart) {
+			if (flowFlags.restart) {
 				return run.call(this);
 			}
 
 			// or we can recover from the error
 			// remember that the 'recoverFn' will set the 'value' to be inserted inside the generator
 			// into the next iteration
-			if (recover) {
-				recover = false;
+			if (flowFlags.recover) {
+				flowFlags.recover = false;
+				retryNTimes.value = 0;
 				continue;
 			}
 
-			// if the 'restartFn' and the 'recoverFn' were not called, it means that the generator
+			// or we can use the new recomputed value
+			if (flowFlags.retry) {
+				flowFlags.retry = false;
+				value = _value;
+				retryNTimes.value = 0;
+				continue;
+			}
+
+			// if the 'restartFn' and the 'recoverFn' and the 'retryFn' were not called, it means that the generator
 			// should not be recovered nor restarted: we cannot do anything except call the 'finalizer' function
 			this[FINALIZER] && this[FINALIZER]();
 			return;
@@ -173,6 +193,61 @@ function run() {
 	this[FINALIZER] && this[FINALIZER]();
 	return;
 
+}
+
+function handleRecoverableError({ flowFlags, retryNTimes }, { expr, error, retryFn, recoverFn, restartFn }) {
+
+	this[CATCHER](
+		{ error, isRecoverable: true },
+		{ retry: retryFn, recover: recoverFn, restart: restartFn },
+	);
+
+	// if the 'restartFn' was called, the only flag that should be set to true is the restart one
+	// but it is already true because of the 'restartFn' call
+	if (flowFlags.restart) {
+		return;
+	}
+
+	// if the 'recoverFn' was called, the only flag that should be set to true is the recover one
+	// but it is already true because of the 'recoverFn' call
+	// the value for the next iteration has been set inside the 'run' function by the 'recoverFn'
+	if (flowFlags.recover) {
+		return;
+	}
+
+	// if the 'retryFn' was called we have to retry the failed computation 'retryNTimes.value' times
+	if (flowFlags.retry && retryNTimes.value) {
+		let error = null;
+		let value = null;
+
+		while (retryNTimes.value > 0) {
+			try {
+				value = expr();
+				error = null;
+				break;
+			} catch (e) {
+				error = e;
+			}
+
+			retryNTimes.value--;
+		}
+
+		// if all attempts have failed
+		// we have to call the catch function again with the new error
+		if (error) {
+			return handleRecoverableError.call(this, { flowFlags, retryNTimes }, { expr, error, retryFn, recoverFn, restartFn });
+		} else {
+			// if one of the attempt was right, we return the value of the computation
+			return value;
+		}
+	}
+
+	// if the 'restartFn' and the 'recoverFn' and the 'retryFn' were not called, it means that the generator
+	// should not be recovered nor restarted
+	flowFlags.restart = false;
+	flowFlags.retry = false;
+	flowFlags.recover = false;
+	return;
 }
 
 // hoping you're doing well

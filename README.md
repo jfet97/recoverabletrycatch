@@ -94,42 +94,62 @@ const { perform } = require("recoverabletrycatch");
 perform(computation).catch(errorHandler).try();
 ```
 
-6. Update the `errorHandler` to recover from the possible error:
+6a. Update the `errorHandler` to recover from the possible error with the value `42`:
 ```js
-// STEP 6
+// STEP 6a
 
-function errorHandler({ error, isRecoverable }, recover) {
+function errorHandler({ error, isRecoverable }, { recover }) {
 	if(isRecoverable) {
 		recover(42);
 	}
 }
 ```
 
+6b. Update the `errorHandler` to retry the possible failed computation 5 times:
+```js
+// STEP 6b
+
+function errorHandler({ error, isRecoverable }, { retry }) {
+	if(isRecoverable) {
+		retry(5);
+	}
+}
+```
+
 ## the API
 ### error types
-First thing you have to know is the difference between recoverable errors and not-recoverable errors.\
-The former rises from a __yielded computation__ (the one inside a yielded arrow function) and let you call the `recover` function from the _catcher functon_ (the one you pass to the _catch_ method) with a value that will be used instead of the failed computation.\
-The latter rises from the generator itself, most of the time because you forgot to yield a problematic computation wrapped inside an arrow function. There is no JavaScript magic which can help us; the only thing you can do from the catcher functon is to call the `restart` function that reboots the generator starting a fresh, new instance of it.
+First thing you have to know is the difference between __recoverable errors__ and __not-recoverable errors__you can .\
+The former rise from a __yielded computation__ (the one inside a yielded arrow function) and let you do some stuff from the _catcher functon_ (the one you pass to the _catch_ method):
+* you can call the `recover` function with a value that will be used instead of the failed computation
+* you can call the `retry` function with a numerical value (default is 1) that indicates how many time the problematic computation should be retried before calling again the catcher function
+* you can call the `restart` function to try again the whole computation (the generator)
+
+The latter rise from the generator itself, most of the time because you forgot to yield a problematic computation wrapped inside an arrow function. There is no JavaScript magic which can help us; the only thing you can do from the catcher functon is to call the `restart` function that reboots the generator starting a fresh, new instance of it.
 
 Each time the _catcher functon_ will be called, you'll find inside the first object argument the error that interrupted the main execution and a boolean flag that indicates if the error is recoverable or not. So you'll have all the needed informations to to choose how to handle the situation.
 
-Obviously you are not forced to call the `recover` function nor the `restart` function: you can let the catcher function end without performing any recover action. If a finalizer function were registered, it will be called. After that the `recoverabletrycatch` will give up control to the main flow.
+Obviously you are not forced to call the `retry` function nor the `recover` function nor the `restart` function: you can let the catcher function end without performing any recover action. If a finalizer function were registered, it will be called. After that the `recoverabletrycatch` will give up control to the main flow.
 
 ### perform
 The function `perform` let you register the generator. It returns an object thanks to which you will register a catcher function.
 
 ### catch
 The method `catch` let you register a catcher function. It returns an object thanks to which you can register a finalizer function or you can start the generator.\
-The catcher function takes three parameters: an object containing the `error` and the `isRecoverable` flag, the `recover` function and the `restart` function.
+The catcher function takes two parameters:
+1. an object containing the `error` and the `isRecoverable` flag
+2. an object containing the `retry` funciton, the `recover` function and the `restart` function.
 
 ```js
-// EXAMPLE OF CATHCER FUNCTION
-function catcherFuction({error, isRecoverable}, recover, restart) {
+// EXAMPLE OF CATCHER FUNCTION
+function catcherFuction({error, isRecoverable}, { retry, recover, restart }) {
 	// logic
 }
 ```
 
-* if the error is recoverable you will be able to call both the `recover` and the `restart` functions, but you shouldn't do that. Choose if recover from the error OR if restart the generator. If you will call both, the generator will be restarted
+* if the error is recoverable you will be able to call not only the `retry` function, but the `recover` function and the `restart` function too. Anyway you shouldn't do that. Choose if retry the failed computation XOR recover from the error XOR restart the generator. To let you know the precedence is:
+1. restart
+2. recover
+3. retry
 * if the error is not recoverable you will be able to call only the `restart` function. Calling the `recover` function will have no effects
 
 ### finally
@@ -139,46 +159,87 @@ The finalizer function will be always called after the main computation ends, no
 ### try
 The method `try` let you start the main computation.
 
-## simple example
+## simple example that embraces all three error handling strategies
 ```js
-const { perform } = require("recoverabletrycatch");
+const {
+	perform
+} = require("recoverabletrycatch");
 
 function getValue() {
-    return Math.floor(Math.random() * 10);
+	return 10;
 }
 
 function mayThrow() {
-    if (Math.random() < 0.5) {
-        throw new Error("<0.5 error");
-    } else {
-        return getValue();
-    }
+	if (Math.random() < 0.5) {
+		throw new Error("<0.5 error");
+	} else {
+		return getValue();
+	}
+}
+
+function mayThrowSomethingBad() {
+	if (Math.random() < 0.5) {
+		throw new Error("Really Bad Thing");
+	} else {
+		return getValue();
+	}
 }
 
 let res;
 
-perform(function*() {
-        let v1 = getValue();
-	let v2 = getValue();
-				
-	// yield the problematic computation
-        let v3 = yield () => mayThrow();
-				
-	console.log({ v1, v2, v3 });
-				
-        res = v1 + v2 + v3;
-    })
-    .catch(function({ error, isRecoverable }, recover) {
-        if (isRecoverable && error.message === "<0.5 error") {
-	    // if mayThrow has thrown an error, I'll replace its failed computation 
-            // with the value 10
-            recover(10);
-        }
-    })
-    .try();
+perform(function* () {
+		let v1 = getValue();
+		let v2 = getValue();
+
+		// yield the problematic computation
+		let v3 = yield () => mayThrow();
+
+		let v4 = yield () => mayThrowSomethingBad();
+
+		console.log({
+			v1,
+			v2,
+			v3,
+			v4
+		});
+
+		res = v1 + v2 + v3 + v4;
+	})
+	.catch(function IIFE() {
+
+		let mayThrowExceptionsAlreadyHandled = false;
+
+		return function ({
+			error,
+			isRecoverable
+		}, {
+			retry,
+			recover,
+			restart
+		}) {
+			console.log({ error: error.message });
+			if (isRecoverable && error.message === "<0.5 error") {
+				console.log({ mayThrowExceptionsAlreadyHandled })
+				if (!mayThrowExceptionsAlreadyHandled) {
+					// try again the failed computation three times
+					retry(3);
+					mayThrowExceptionsAlreadyHandled = true;
+				} else {
+					// no way to perform the problematic computation: recover with a custom value
+					recover(1);
+				}
+			}
+
+			if (!isRecoverable && error.message === "Really Bad Thing") {
+				// something really bad happened: restart the whole computation
+				restart();
+			}
+		}
+	}())
+	.try();
 
 console.log({
-    res
+	res
 });
 ```
 

@@ -310,8 +310,8 @@ const {
       return function catcher({ error }, { retry, restart }) {
 
         if (!error.response) {
-					// this was not an axios error: I chose to do nothing
-					console.log({error});
+          // this was not an axios error: I chose to do nothing
+          console.log({error});
           return;
         }
 								

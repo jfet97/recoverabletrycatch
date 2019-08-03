@@ -105,13 +105,13 @@ function errorHandler({ error, isRecoverable }, { recover }) {
 }
 ```
 
-6b. Update the `errorHandler` to retry the possible failed computation 5 times:
+6b. Update the `errorHandler` to retry the possible failed computation until it succeed:
 ```js
 // STEP 6b
 
 function errorHandler({ error, isRecoverable }, { retry }) {
 	if(isRecoverable) {
-		retry(5);
+		retry(Infinity);
 	}
 }
 ```

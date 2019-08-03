@@ -150,7 +150,7 @@ function catcherFuction({error, isRecoverable}, { retry, recover, restart }) {
 1. restart
 2. recover
 3. retry
-* if the error is not recoverable you will be able to call only the `restart` function. Calling the `recover` function will have no effects
+* if the error is not recoverable you will be able to call only the `restart` function. Calling the `recover` function or the `retry` function will have no effects
 
 ### finally
 The method `finally` let you register a finalizer function. It returns an object thanks to which you can  start the generator.\

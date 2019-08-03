@@ -118,7 +118,7 @@ function errorHandler({ error, isRecoverable }, { retry }) {
 
 ## the API
 ### error types
-First thing you have to know is the difference between __recoverable errors__ and __not-recoverable errors__you can .\
+First thing you have to know is the difference between __recoverable errors__ and __not-recoverable errors__.\
 The former rise from a __yielded computation__ (the one inside a yielded arrow function) and let you do some stuff from the _catcher functon_ (the one you pass to the _catch_ method):
 * you can call the `recover` function with a value that will be used instead of the failed computation
 * you can call the `retry` function with a numerical value (default is 1) that indicates how many time the problematic computation should be retried before calling again the catcher function

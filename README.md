@@ -304,7 +304,7 @@ const {
       }
 			
       function restore() {
-        Object.keys(alreadyRetried).forEach(key => alreadyRetried[key] = false;)
+        Object.keys(alreadyRetried).forEach(key => alreadyRetried[key] = false)
       }
 
       return function catcher({ error }, { retry, restart }) {

@@ -194,7 +194,7 @@ perform(function* () {
 		// yield the problematic computation
 		let v3 = yield () => mayThrow();
 
-		let v4 = yield () => mayThrowSomethingBad();
+		let v4 = mayThrowSomethingBad();
 
 		console.log({
 			v1,

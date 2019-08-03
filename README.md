@@ -232,6 +232,7 @@ perform(function* () {
 
 			if (!isRecoverable && error.message === "Really Bad Thing") {
 				// something really bad happened: restart the whole computation
+				mayThrowExceptionsAlreadyHandled = false;
 				restart();
 			}
 		}

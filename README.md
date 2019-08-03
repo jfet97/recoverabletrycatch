@@ -286,8 +286,8 @@ const {
     await performAsync(
       async function* () {
         const todo1 = yield () => axios.get("https://jsonplaceholder.typicode.com/todos/1");
-        const post1 = yield () => axios.post("https://jsonplaceholder.typicode.com/posts", { text: todo1 });
-        data = (yield () => axios.post("https://reqres.in/api/users", { id: 1, post: post1 })).data;
+        const post1 = yield () => axios.post("https://jsonplaceholder.typicode.com/posts", { text: todo1.data });
+        data = (yield () => axios.post("https://reqres.in/api/users", { id: 1, post: post1.data })).data;
       }
     )
     .catch(function IIFE() {
@@ -308,6 +308,13 @@ const {
       }
 
       return function catcher({ error }, { retry, restart }) {
+
+        if (!error.response) {
+					// this was not an axios error: I chose to do nothing
+					console.log({error});
+          return;
+        }
+								
         const url = error.config.url;
 
         // if we have not alredy tried to reconnect to an url
@@ -330,7 +337,7 @@ const {
         // maybe that url wants to be left in peace
 				
       }
-    })
+    }())
     .try();
 
     console.log({ data });

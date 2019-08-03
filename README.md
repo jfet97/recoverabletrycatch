@@ -89,9 +89,9 @@ function errorHandler({ error }) { // you will find the error inside the first o
 ```js
 // STEP 5
 
-const { perform } = require("recoverabletrycatch");
+const { performSync } = require("recoverabletrycatch");
 
-perform(computation).catch(errorHandler).try();
+performSync(computation).catch(errorHandler).try();
 ```
 
 6a. Update the `errorHandler` to recover from the possible error with the value `42`:
@@ -130,8 +130,8 @@ Each time the _catcher functon_ will be called, you'll find inside the first obj
 
 Obviously you are not forced to call the `retry` function nor the `recover` function nor the `restart` function: you can let the catcher function end without performing any recover action. If a finalizer function were registered, it will be called. After that the `recoverabletrycatch` will give up control to the main flow.
 
-### perform
-The function `perform` let you register the generator. It returns an object thanks to which you will register a catcher function.
+### performSync
+The function `performSync` let you register the generator. It returns an object thanks to which you will register a catcher function.
 
 ### catch
 The method `catch` let you register a catcher function. It returns an object thanks to which you can register a finalizer function or you can start the generator.\
@@ -162,7 +162,7 @@ The method `try` let you start the main computation.
 ## simple example that embraces all three error handling strategies
 ```js
 const {
-	perform
+	performSync
 } = require("recoverabletrycatch");
 
 function getValue() {
@@ -187,7 +187,7 @@ function mayThrowSomethingBad() {
 
 let res;
 
-perform(function* () {
+performSync(function* () {
 		let v1 = getValue();
 		let v2 = getValue();
 
@@ -246,4 +246,95 @@ console.log({
 
 
 ## async perform
-Work in progress
+The `recoverabletrycatch` package let you apply the same strategy with asynchronous code as well.\
+You will require `performAsync`, instead of `performSync`, passing to it an __asynchronous generator__. Doing so you will be able to yield out async computations, wrapped inside sync or async arrow functions. The yielded computation will be always _awaited_.\
+Calling the `try` method will return a _Promise_ that will resolve at the end of the process. If a finalizer function was registered, the Promise will resolve after its execution.
+
+## async example
+Let's trasform an async flow where we have to get some information from an endpoint, use those information to post some data to another endpoint and, finally, use the last response to store some data inside a database thanks to a third endpoind.
+
+```js
+// START
+const axios = require('axios');
+
+;(async () => {
+    let data;
+
+    try {
+      const todo1 = await axios.get("https://jsonplaceholder.typicode.com/todos/1");
+      const post1 = await axios.post("https://jsonplaceholder.typicode.com/posts", { text: todo1 });
+      data = (await axios.post("https://reqres.in/api/users", { id: 1, post: post1 })).data;
+    } catch {}
+		
+    console.log({data})
+})();
+```
+
+Each of those async actions could go wrong, because of server errors for example.
+Thanks to `recoverabletrycatch` we will be always able to recover the situation without loosing the already retrieved information; no matter where and when exceptions raised up.
+
+```js
+// END
+const axios = require('axios');
+const {
+	performAsync
+} = require("recoverabletrycatch");
+
+;(async () => {
+    let data;
+
+    await performAsync(
+      async function* () {
+        const todo1 = yield () => axios.get("https://jsonplaceholder.typicode.com/todos/1");
+        const post1 = yield () => axios.post("https://jsonplaceholder.typicode.com/posts", { text: todo1 });
+        data = (yield () => axios.post("https://reqres.in/api/users", { id: 1, post: post1 })).data;
+      }
+    )
+    .catch(function IIFE() {
+      const alreadyRetried = {
+        "https://jsonplaceholder.typicode.com/todos/1": false,
+        "https://jsonplaceholder.typicode.com/posts": false,
+        "https://reqres.in/api/users": false,
+      }
+
+      const alreadyRestarted = {
+        "https://jsonplaceholder.typicode.com/todos/1": false,
+        "https://jsonplaceholder.typicode.com/posts": false,
+        "https://reqres.in/api/users": false,
+      }
+			
+      function restore() {
+        Object.keys(alreadyRetried).forEach(key => alreadyRetried[key] = false;)
+      }
+
+      return function catcher({ error }, { retry, restart }) {
+        const url = error.config.url;
+
+        // if we have not alredy tried to reconnect to an url
+        // retry five times
+        if(!alreadyRetried[url]) {
+          retry(5);
+          alreadyRetried[url] = true;
+					
+        // if we have already tried to reconnect to an url
+        // restart the whole process but only one time per url
+        } else if(!alreadyRestarted[url]){
+          restart();
+          alreadyRestarted[url] = true;
+          // each time we restart the alreadyRetried map must be resetted
+          restore();
+        }
+
+        // if we have already tried to reconnect to an url
+        // and we have already tried to restart the whole process
+        // maybe that url wants to be left in peace
+				
+      }
+    })
+    .try();
+
+    console.log({ data });
+
+})();
+```
+

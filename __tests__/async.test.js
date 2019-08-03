@@ -1,27 +1,25 @@
-const { performSync } = require("../src/index");
+const { performAsync } = require("../src/index");
+
+const delay = ms => new Promise(ok => setTimeout(ok, ms));
 
 test('should pass', () => {
 	expect(true).toBe(true);
 });
 
-describe("performSync", () => {
+describe("performAsync", () => {
 
-	test('the returned object from \'performSync\' function call should have a catch method', () => {
+	test('the returned object from \'performAsync\' function call should have a catch method', () => {
 
-
-
-		const uncompleted = performSync(function* () { });
+		const uncompleted = performAsync(async function* () { });
 
 		expect(uncompleted.catch).toBeInstanceOf(Function);
 	});
 
-	test('all the jobs should complete successfully', () => {
-
-
+	test('all the jobs should complete successfully', async () => {
 
 		const mockFn = jest.fn();
 
-		performSync(function* () {
+		await performAsync(async function* () {
 			mockFn();
 			mockFn();
 			mockFn();
@@ -40,7 +38,7 @@ describe("catch", () => {
 	test('the returned object from \'catch\' method call should have a try method', () => {
 
 
-		const uncompleted = performSync(function* () { }).catch(() => { });
+		const uncompleted = performAsync(async function* () { }).catch(() => { });
 
 		expect(uncompleted.try).toBeInstanceOf(Function);
 	});
@@ -48,7 +46,7 @@ describe("catch", () => {
 	test('the returned object from \'catch\' method call should have a finally method', () => {
 
 
-		const uncompleted = performSync(function* () { }).catch(() => { });
+		const uncompleted = performAsync(async function* () { }).catch(() => { });
 
 		expect(uncompleted.finally).toBeInstanceOf(Function);
 	});
@@ -58,18 +56,18 @@ describe("catch", () => {
 
 		const mockFn = jest.fn();
 
-		performSync(function* () { mockFn(); }).catch(() => { });
+		performAsync(async function* () { mockFn(); }).catch(() => { });
 
 		expect(mockFn).not.toHaveBeenCalled();
 	});
 
-	test('the catcher function should not be called', () => {
+	test('the catcher function should not be called', async () => {
 
 
 		const work = () => { };
 		const mockedCatcher = jest.fn();
 
-		performSync(function* () {
+		await performAsync(async function* () {
 			work();
 		})
 			.catch(mockedCatcher)
@@ -78,12 +76,12 @@ describe("catch", () => {
 		expect(mockedCatcher).not.toHaveBeenCalled();
 	});
 
-	test('the catcher function should receive two arguments', () => {
+	test('the catcher function should receive two arguments', async () => {
 
 
 		const work = () => { throw 3 };
 
-		performSync(function* () {
+		await performAsync(async function* () {
 			work();
 		})
 			.catch((...args) => {
@@ -93,30 +91,30 @@ describe("catch", () => {
 
 	});
 
-	test('the first argument received by the catcher function should be an object with two field: {error, isRecoverable}', () => {
+	test('the first argument received by the catcher function should be an object with two field: {error, isRecoverable}', done => {
 
 
 		const work = () => { throw 3 };
 
-		performSync(function* () {
+		performAsync(async function* () {
 			work();
 		})
 			.catch(({ error, isRecoverable }) => {
 				expect(error).toBeDefined();
 				expect(isRecoverable).toBeDefined();
+				done();
 			})
 			.try();
 	});
 
-	test('the error field should contain the thrown entity', () => {
-
+	test('the error field should contain the thrown entity', async () => {
 
 		{
 			const entityToBeThrown = {};
 
 			const work = () => { throw entityToBeThrown };
 
-			performSync(function* () {
+			await performAsync(async function* () {
 				work();
 			})
 				.catch(({ error }) => {
@@ -128,9 +126,9 @@ describe("catch", () => {
 		{
 			const entityToBeThrown = {};
 
-			const work = () => { throw entityToBeThrown };
+			const work = async () => { throw entityToBeThrown };
 
-			performSync(function* () {
+			await performAsync(async function* () {
 				yield () => work();
 			})
 				.catch(({ error }) => {
@@ -141,7 +139,7 @@ describe("catch", () => {
 
 	});
 
-	test('the isRecoverable field should be true if an error was thrown by an yelded computation', () => {
+	test('the isRecoverable field should be true if an error was thrown by an yelded computation', async () => {
 
 
 		{
@@ -149,7 +147,7 @@ describe("catch", () => {
 
 			const work = () => { throw entityToBeThrown };
 
-			performSync(function* () {
+			await performAsync(async function* () {
 				yield () => work();
 			})
 				.catch(({ isRecoverable }) => {
@@ -160,7 +158,7 @@ describe("catch", () => {
 
 	});
 
-	test('the isRecoverable field should be false if an error was thrown by the generator', () => {
+	test('the isRecoverable field should be false if an error was thrown by the generator', async () => {
 
 
 		{
@@ -168,7 +166,7 @@ describe("catch", () => {
 
 			const work = () => { throw entityToBeThrown };
 
-			performSync(function* () {
+			await performAsync(async function* () {
 				work();
 			})
 				.catch(({ isRecoverable }) => {
@@ -179,13 +177,13 @@ describe("catch", () => {
 
 	});
 
-	test('the second argument received by the catcher function should be an object containing three functions: {recover, retry, restart}', () => {
+	test('the second argument received by the catcher function should be an object containing three functions: {recover, retry, restart}', async () => {
 
 
 		const work = () => { throw 3 };
 
 
-		performSync(function* () {
+		await performAsync(async function* () {
 			work();
 		})
 			.catch((_, { recover, retry, restart }) => {
@@ -196,12 +194,14 @@ describe("catch", () => {
 			.try();
 	});
 
-	test('when an error is thrown by a yielded computation, the retry function should reevaluate it', () => {
+
+
+	test('when an error is thrown by a yielded computation, the retry function should reevaluate it', async () => {
 
 		let alreadyCalled = false;
 		const work = jest.fn(() => { throw 3 });
 
-		performSync(function* () {
+		await performAsync(async function* () {
 			yield () => work();
 		})
 			.catch((_, { retry }) => {
@@ -216,7 +216,7 @@ describe("catch", () => {
 	});
 
 	test('when an error is thrown by a yielded computation, passing a numeric value (N) to the the retry function should reevaluate it\
-	at most N times until it succeeds ', () => {
+	at most N times until it succeeds ', async () => {
 
 
 			let counter = 0;
@@ -226,7 +226,7 @@ describe("catch", () => {
 				}
 			});
 
-			performSync(function* () {
+			await performAsync(async function* () {
 				yield () => work();
 			})
 				.catch((_, { retry }) => {
@@ -238,14 +238,15 @@ describe("catch", () => {
 
 		});
 
-	test('when an error is thrown by a yielded computation, if a retried computation have success its resulting value should be insterted back into the generator', () => {
+	test('when an error is thrown by a yielded computation, if a retried computation have success its resulting value should be insterted back into the generator', async () => {
 
 		let counter = 0;
 		const value = [];
 
 		const mockFn = jest.fn();
 
-		const work = function mayThrow() {
+		const work = async function mayThrow() {
+			await delay(200);
 			if (counter++ < 3) {
 				throw new Error();
 			} else {
@@ -253,8 +254,8 @@ describe("catch", () => {
 			}
 		}
 
-		performSync(function* () {
-			const res = yield () => work();
+		await performAsync(async function* () {
+			const res = await (yield () => work());
 			mockFn(res);
 		})
 			.catch((_, { retry }) => {
@@ -266,8 +267,10 @@ describe("catch", () => {
 
 	});
 
+
+
 	test('when an error is thrown by a yielded computation, passing a numeric value (N) to the the retry function should reevaluate it\
-	at most N times before calling again the catcher function in case of N failures', () => {
+	at most N times before calling again the catcher function in case of N failures', async () => {
 
 
 			let alreadyCalled = false;
@@ -279,8 +282,8 @@ describe("catch", () => {
 				}
 			})
 
-			performSync(function* () {
-				yield () => work();
+			await performAsync(async function* () {
+				yield async () => await work();
 			})
 				.catch(catcher)
 				.try();
@@ -289,14 +292,14 @@ describe("catch", () => {
 			expect(catcher).toHaveBeenCalledTimes(2);
 		});
 
-	test('when an error is thrown by the generator, calling the retry function should have no effect', () => {
+	test('when an error is thrown by the generator, calling the retry function should have no effect', async () => {
 
 
-		const work = () => { throw 3 };
+		const work = async () => { delay(200); throw 3; };
 		const mockFn = jest.fn();
 
-		performSync(function* () {
-			work();
+		await performAsync(async function* () {
+			await work();
 			mockFn();
 		})
 			.catch((_, { retry }) => {
@@ -309,14 +312,14 @@ describe("catch", () => {
 
 
 
-	test('when an error is thrown by a yielded computation, the recover function should allow continuation', () => {
+	test('when an error is thrown by a yielded computation, the recover function should allow continuation', async () => {
 
 
 		const work = () => { throw 3 };
 		const mockFn = jest.fn();
 
-		performSync(function* () {
-			yield () => work();
+		await performAsync(async function* () {
+			await (yield async () => await work());
 			mockFn();
 		})
 			.catch((_, { recover }) => {
@@ -327,14 +330,14 @@ describe("catch", () => {
 		expect(mockFn).toHaveBeenCalled();
 	});
 
-	test('when an error is thrown by a yielded computation, the value passed to the recover function should be inserted inside the generator', () => {
+	test('when an error is thrown by a yielded computation, the value passed to the recover function should be inserted inside the generator', async () => {
 
 
 		const work = () => { throw 3 };
 		const mockFn = jest.fn();
 		const continuationValue = {};
 
-		performSync(function* () {
+		await performAsync(async function* () {
 			mockFn(yield () => work());
 		})
 			.catch((_, { recover }) => {
@@ -345,13 +348,13 @@ describe("catch", () => {
 		expect(mockFn).toHaveBeenCalledWith(continuationValue);
 	});
 
-	test('when an error is thrown by the generator, calling the recover function should have no effect', () => {
+	test('when an error is thrown by the generator, calling the recover function should have no effect', async () => {
 
 
 		const work = () => { throw 3 };
 		const mockFn = jest.fn();
 
-		performSync(function* () {
+		await performAsync(async function* () {
 			work();
 			mockFn();
 		})
@@ -363,13 +366,15 @@ describe("catch", () => {
 		expect(mockFn).not.toHaveBeenCalled();
 	});
 
-	test('when an error is thrown by a yielded computation, calling restart will restart the generator', () => {
+
+
+	test('when an error is thrown by a yielded computation, calling restart will restart the generator', async () => {
 
 
 		let alreadyCalled = false;
 		const mockFn = jest.fn(() => { throw 3 });
 
-		performSync(function* () {
+		await performAsync(async function* () {
 			yield () => mockFn();
 		})
 			.catch((_, { restart }) => {
@@ -383,13 +388,13 @@ describe("catch", () => {
 		expect(mockFn).toHaveBeenCalledTimes(2);
 	});
 
-	test('when an error is thrown by the generator, calling restart will restart the generator', () => {
+	test('when an error is thrown by the generator, calling restart will restart the generator', async () => {
 
 
 		let alreadyCalled = false;
 		const mockFn = jest.fn(() => { throw 3 });
 
-		performSync(function* () {
+		await performAsync(async function* () {
 			mockFn();
 		})
 			.catch((_, { restart }) => {
@@ -407,31 +412,31 @@ describe("catch", () => {
 
 
 describe("finally", () => {
-	test('the returned object from \'finally\' method call should have a try method', () => {
+	test('the returned object from \'finally\' method call should have a try method', async () => {
 
 
-		const uncompleted = performSync(function* () { }).catch(() => { }).finally(() => { });
+		const uncompleted = performAsync(async function* () { }).catch(() => { }).finally(() => { });
 
 		expect(uncompleted.try).toBeInstanceOf(Function);
 	});
 
-	test('should not start the execution because the try method was not called', () => {
+	test('should not start the execution because the try method was not called', async () => {
 
 
 		const mockFn = jest.fn();
 
-		performSync(function* () { mockFn(); }).catch(() => { }).finally(() => { });
+		await performAsync(async function* () { mockFn(); }).catch(() => { }).finally(() => { });
 
 		expect(mockFn).not.toHaveBeenCalled();
 	});
 
-	test('the finalizer function should always be called at the end of the task if no error has occurred', () => {
+	test('the finalizer function should always be called at the end of the task if no error has occurred', async () => {
 
 
 		const work = () => { };
 		const mockedFinalizer = jest.fn();
 
-		performSync(function* () {
+		await performAsync(async function* () {
 			work();
 		})
 			.catch(() => { })
@@ -441,14 +446,14 @@ describe("finally", () => {
 		expect(mockedFinalizer).toHaveBeenCalled();
 	});
 
-	test('the finalizer function should always be called at the end of the catcher function when the task is not replayed', () => {
+	test('the finalizer function should always be called at the end of the catcher function when the task is not replayed', async () => {
 
 
 		{
 			const work = () => { throw 42 };
 			const mockedFinalizer = jest.fn();
 
-			performSync(function* () {
+			await performAsync(async function* () {
 				work();
 			})
 				.catch(() => { })
@@ -462,7 +467,7 @@ describe("finally", () => {
 			const work = () => { throw 42 };
 			const mockedFinalizer = jest.fn();
 
-			performSync(function* () {
+			await performAsync(async function* () {
 				yield () => work();
 			})
 				.catch(() => { })
@@ -477,24 +482,27 @@ describe("finally", () => {
 
 })
 
+
+
+
 describe("try", () => {
 
-	test('should start the execution after the catch method was called', () => {
+	test('should start the execution after the catch method was called', async () => {
 
 
 		const mockFn = jest.fn();
 
-		performSync(function* () { mockFn(); }).catch(() => { }).try();
+		await performAsync(async function* () { mockFn(); }).catch(() => { }).try();
 
 		expect(mockFn).toHaveBeenCalled();
 	});
 
-	test('should start the execution after the finally method was called', () => {
+	test('should start the execution after the finally method was called', async () => {
 
 
 		const mockFn = jest.fn();
 
-		performSync(function* () { mockFn(); }).catch(() => { }).finally(() => { }).try();
+		await performAsync(async function* () { mockFn(); }).catch(() => { }).finally(() => { }).try();
 
 		expect(mockFn).toHaveBeenCalled();
 	});

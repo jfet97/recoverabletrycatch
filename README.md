@@ -137,7 +137,7 @@ The function `perform` let you register the generator. It returns an object than
 The method `catch` let you register a catcher function. It returns an object thanks to which you can register a finalizer function or you can start the generator.\
 The catcher function takes two parameters:
 1. an object containing the `error` and the `isRecoverable` flag
-2. an object containing the `retry` funciton, the `recover` function and the `restart` function.
+2. an object containing the `retry` function, the `recover` function and the `restart` function.
 
 ```js
 // EXAMPLE OF CATCHER FUNCTION
